@@ -25,8 +25,8 @@ A modern, robust web application built to intelligently manage schedules and ens
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/YOUR-USERNAME/remainder-agent.git
-   cd remainder-agent
+   git clone https://github.com/YOUR-USERNAME/EventFlow.git
+   cd EventFlow
    ```
 
 2. Install dependencies:
