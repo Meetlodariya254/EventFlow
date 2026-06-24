@@ -156,7 +156,7 @@ exports.sendWhatsAppReminder = onDocumentCreated(
 // ============================================================
 // FUNCTION 3: checkAndSendVoiceCalls
 // Runs every minute, checks for reminders where WhatsApp was
-// sent 5+ minutes ago but not delivered, then makes voice call
+// sent 2+ minutes ago but not read (seen), then makes voice call
 // ============================================================
 exports.checkAndSendVoiceCalls = onSchedule(
   {
@@ -167,7 +167,7 @@ exports.checkAndSendVoiceCalls = onSchedule(
   async (event) => {
     try {
       const now = new Date();
-      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+      const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
 
       // Find reminders where WhatsApp was sent but voice call hasn't been made
       const remindersSnapshot = await db
@@ -180,10 +180,10 @@ exports.checkAndSendVoiceCalls = onSchedule(
         const reminderData = reminderDoc.data();
         const whatsappSentAt = reminderData.whatsappSentAt?.toDate?.();
 
-        // Check if 5 minutes have passed since WhatsApp was sent
-        if (whatsappSentAt && whatsappSentAt <= fiveMinutesAgo) {
-          // Check WhatsApp delivery status via Twilio
-          let isDelivered = false;
+        // Check if 2 minutes have passed since WhatsApp was sent
+        if (whatsappSentAt && whatsappSentAt <= twoMinutesAgo) {
+          // Check WhatsApp read status via Twilio
+          let isRead = false;
 
           try {
             const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -192,14 +192,15 @@ exports.checkAndSendVoiceCalls = onSchedule(
             if (accountSid && authToken && reminderData.whatsappMessageSid) {
               const twilio = require("twilio")(accountSid, authToken);
               const messageStatus = await twilio.messages(reminderData.whatsappMessageSid).fetch();
-              isDelivered = ["delivered", "read"].includes(messageStatus.status);
+              // Check if the user actually opened/saw the message
+              isRead = messageStatus.status === "read";
 
-              if (isDelivered) {
+              if (isRead) {
                 await reminderDoc.ref.update({
-                  whatsappStatus: "delivered",
+                  whatsappStatus: "read",
                   voiceCallStatus: "skipped",
                 });
-                logger.info(`WhatsApp was delivered for reminder ${reminderDoc.id}, skipping voice call`);
+                logger.info(`WhatsApp was read for reminder ${reminderDoc.id}, skipping voice call`);
                 continue;
               }
             }
@@ -207,7 +208,7 @@ exports.checkAndSendVoiceCalls = onSchedule(
             logger.warn(`Could not check WhatsApp status: ${err.message}`);
           }
 
-          // WhatsApp not delivered — make voice call
+          // WhatsApp not read — make voice call
           try {
             const accountSid = process.env.TWILIO_ACCOUNT_SID;
             const authToken = process.env.TWILIO_AUTH_TOKEN;

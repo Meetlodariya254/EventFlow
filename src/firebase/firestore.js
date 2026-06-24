@@ -169,8 +169,8 @@ export const startMockReminderWorker = (userId) => {
                   notifyListeners('reminders');
                 }
 
-                // Add a voice call reminder entry and trigger voice call after 5 more seconds
-                // (simulates the 5-minute fallback, compressed for dev)
+                // Add a voice call reminder entry and trigger voice call after 2 minutes
+                // (simulates the 2-minute fallback for unseen messages)
                 setTimeout(() => {
                   const r3 = getCollection(REMINDERS_KEY);
                   const existingVoice = r3.find((r) => r.eventId === event.id && r.type === 'voice');
@@ -203,7 +203,7 @@ export const startMockReminderWorker = (userId) => {
                       }
                     }, 5000);
                   }
-                }, 5000);
+                }, 120000); // 120,000 ms = 2 minutes
               }, 8000);
             }
           }, 3000);
