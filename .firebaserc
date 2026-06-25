@@ -1,6 +1,6 @@
 {
   "projects": {
-    "default": "your-firebase-project-id",
+    "default": "remainder-agent",
     "staging": "remainder-agent"
   },
   "targets": {},
