@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
-import { CalendarCheck, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { CalendarCheck, Mail, Lock, Eye, EyeOff, Loader2, KeyRound } from 'lucide-react';
 
-export default function Login() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const { logIn } = useAuth();
+  const { resetPassword } = useAuth();
   const navigate = useNavigate();
 
   function validate() {
@@ -23,8 +24,16 @@ export default function Login() {
       newErrors.email = 'Please enter a valid email';
     }
 
-    if (!password) {
-      newErrors.password = 'Password is required';
+    if (!newPassword) {
+      newErrors.newPassword = 'New password is required';
+    } else if (newPassword.length < 6) {
+      newErrors.newPassword = 'Password must be at least 6 characters';
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (newPassword !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
@@ -37,28 +46,29 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await logIn(email, password);
-      navigate('/');
+      await resetPassword(email, newPassword);
+      toast.success('Password reset successfully! Please sign in.');
+      navigate('/login');
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Failed to reset password');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div id="login-page" className="gradient-mesh min-h-screen flex items-center justify-center px-4 py-12">
+    <div id="forgot-password-page" className="gradient-mesh min-h-screen flex items-center justify-center px-4 py-12">
       <div className="animate-fade-in-up w-full max-w-md glass-card rounded-2xl p-8 sm:p-10 shadow-2xl border border-white/20 dark:border-white/10">
-        {/* Logo Area */}
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-pink-500 mb-4 shadow-lg">
-            <CalendarCheck className="w-7 h-7 text-white" />
+            <KeyRound className="w-7 h-7 text-white" />
           </div>
           <h1 className="font-heading text-3xl font-bold bg-gradient-to-r from-indigo-500 to-pink-500 bg-clip-text text-transparent">
-            EventFlow
+            Reset Password
           </h1>
           <p className="font-body text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Smart event management with automated reminders
+            Enter your email and choose a new password
           </p>
         </div>
 
@@ -66,13 +76,13 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
           {/* Email */}
           <div>
-            <label htmlFor="login-email" className="label-text">
-              Email
+            <label htmlFor="reset-email" className="label-text">
+              Registered Email
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
-                id="login-email"
+                id="reset-email"
                 type="email"
                 required
                 className="input-field pl-11"
@@ -86,29 +96,21 @@ export default function Login() {
             )}
           </div>
 
-          {/* Password */}
+          {/* New Password */}
           <div>
-            <div className="flex items-center justify-between">
-              <label htmlFor="login-password" className="label-text mb-0">
-                Password
-              </label>
-              <Link
-                to="/forgot-password"
-                className="text-xs font-semibold text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
+            <label htmlFor="reset-new-password" className="label-text">
+              New Password
+            </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
-                id="login-password"
+                id="reset-new-password"
                 type={showPassword ? 'text' : 'password'}
                 required
                 className="input-field pl-11 pr-11"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min. 6 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
               />
               <button
                 type="button"
@@ -119,8 +121,30 @@ export default function Login() {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            {errors.newPassword && (
+              <p className="text-red-500 text-sm mt-1">{errors.newPassword}</p>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label htmlFor="reset-confirm-password" className="label-text">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+              <input
+                id="reset-confirm-password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                className="input-field pl-11 pr-11"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
             )}
           </div>
 
@@ -133,22 +157,22 @@ export default function Login() {
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Signing in…
+                Resetting Password…
               </>
             ) : (
-              'Sign In'
+              'Reset Password'
             )}
           </button>
         </form>
 
         {/* Footer link */}
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6 font-body">
-          Don&apos;t have an account?{' '}
+          Remember your password?{' '}
           <Link
-            to="/signup"
+            to="/login"
             className="font-semibold text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
           >
-            Sign up
+            Back to Login
           </Link>
         </p>
       </div>

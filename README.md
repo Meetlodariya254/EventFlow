@@ -37,11 +37,14 @@ A modern, robust web application built to intelligently manage schedules and ens
 3. Set up environment variables:
    Create a `.env` file in the root directory and add your Twilio credentials:
    ```env
-   VITE_TWILIO_ACCOUNT_SID=your_account_sid_here
-   VITE_TWILIO_AUTH_TOKEN=your_auth_token_here
-   VITE_TWILIO_PHONE_NUMBER=your_twilio_phone_number
-   VITE_TWILIO_WHATSAPP_NUMBER=+14155238886
+   TWILIO_ACCOUNT_SID=your_account_sid_here
+   TWILIO_AUTH_TOKEN=your_auth_token_here
+   TWILIO_PHONE_NUMBER=your_twilio_phone_number
+   TWILIO_WHATSAPP_NUMBER=your_whatsapp_number
    ```
+   > **Note on WhatsApp Keywords (`join <keyword>`)**: By default, `+14155238886` is Twilio's shared Sandbox number. Anyone receiving messages from it must send `join <keyword>` every 72 hours.
+   > **To send automated WhatsApp messages without users ever sending `join <keyword>`**:
+   > In your [Twilio Console](https://console.twilio.com) -> *Messaging -> Senders -> WhatsApp Senders*, register your `TWILIO_PHONE_NUMBER` as a WhatsApp Business Sender. Once approved (~2 mins), replace `+14155238886` with your registered number!
 
 4. Start the development server:
    ```bash

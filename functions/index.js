@@ -222,12 +222,12 @@ exports.checkAndSendVoiceCalls = onSchedule(
             const twilio = require("twilio")(accountSid, authToken);
 
             const descText = reminderData.eventDescription ? ` Description: ${reminderData.eventDescription}.` : "";
-            const ttsMessage = `Hi ${reminderData.personName}, this is a reminder for ${reminderData.eventTitle} scheduled for ${reminderData.eventTime}.${descText} Please check your calendar. Thank you!`;
+            const ttsMessage = `Hi ${reminderData.personName}, this is an automated reminder for ${reminderData.eventTitle} scheduled for ${reminderData.eventTime}.${descText} Please check your calendar. Thank you!`;
 
             const call = await twilio.calls.create({
               from: twilioPhone,
               to: reminderData.mobileNumber,
-              twiml: `<Response><Say voice="alice">${ttsMessage}</Say></Response>`,
+              twiml: `<Response><Pause length="2"/><Say voice="Polly.Aditi">${ttsMessage}</Say><Pause length="1"/><Say voice="Polly.Aditi">To repeat: ${ttsMessage}</Say></Response>`,
             });
 
             logger.info(`Voice call made to ${reminderData.mobileNumber}: ${call.sid}`);

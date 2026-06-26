@@ -47,6 +47,46 @@ export const logOut = async () => {
   notifyListeners(null);
 };
 
+export const resetPassword = async (email, newPassword) => {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const users = getUsers();
+  const index = users.findIndex((u) => u.email === email);
+  if (index === -1) {
+    throw new Error('No account found with this email address.');
+  }
+  users[index].password = newPassword;
+  setUsers(users);
+};
+
+export const updateUserPassword = async (email, currentPassword, newPassword) => {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const users = getUsers();
+  const index = users.findIndex((u) => u.email === email && u.password === currentPassword);
+  if (index === -1) {
+    throw new Error('Current password is incorrect.');
+  }
+  users[index].password = newPassword;
+  setUsers(users);
+};
+
+export const updateUserProfile = async (uid, updates) => {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  const users = getUsers();
+  const index = users.findIndex((u) => u.uid === uid);
+  if (index === -1) {
+    throw new Error('User account not found.');
+  }
+  users[index] = { ...users[index], ...updates };
+  setUsers(users);
+
+  const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || 'null');
+  if (currentUser && currentUser.uid === uid) {
+    const updatedUser = { ...currentUser, ...updates };
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(updatedUser));
+    notifyListeners(updatedUser);
+  }
+};
+
 export const onAuthChange = (callback) => {
   authStateListeners.push(callback);
   const currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || 'null');

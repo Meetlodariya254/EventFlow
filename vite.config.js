@@ -147,9 +147,9 @@ export default defineConfig(({ mode }) => {
                 console.log(`  → Formatted To (E.164): ${toNumber}`);
 
                 const descText = eventDescription ? ` Description: ${eventDescription}.` : '';
-                const ttsMessage = `Hi ${personName || 'there'}, this is a reminder for ${eventTitle} scheduled for ${eventTime}.${descText} Please check your calendar. Thank you!`;
+                const ttsMessage = `Hi ${personName || 'there'}, this is an automated reminder for ${eventTitle} scheduled for ${eventTime}.${descText} Please check your calendar. Thank you!`;
 
-                const twiml = `<Response><Say voice="alice">${ttsMessage}</Say></Response>`;
+                const twiml = `<Response><Pause length="2"/><Say voice="Polly.Aditi">${ttsMessage}</Say><Pause length="1"/><Say voice="Polly.Aditi">To repeat: ${ttsMessage}</Say></Response>`;
 
                 const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`;
                 const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');

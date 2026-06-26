@@ -14,6 +14,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../../contexts/AuthContext';
 import { getInitials } from '../../utils/helpers';
 import { APP_NAME } from '../../utils/constants';
+import ProfileModal from '../Profile/ProfileModal';
 
 const navLinks = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -22,6 +23,7 @@ const navLinks = [
 
 const Navbar = ({ darkMode, setDarkMode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { user, logOut } = useAuth();
   const navigate = useNavigate();
 
@@ -116,7 +118,12 @@ const Navbar = ({ darkMode, setDarkMode }) => {
               <div className="h-8 w-px bg-surface-200 dark:bg-surface-700" />
 
               {/* User avatar + name */}
-              <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setProfileOpen(true)}
+                className="flex items-center gap-2.5 rounded-full p-1 pl-1.5 pr-3 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+                title="View Profile & Security"
+              >
                 <div
                   className="flex items-center justify-center h-9 w-9 rounded-full bg-gradient-to-br from-primary-500 via-secondary-500 to-accent-500 text-white text-xs font-bold select-none shadow-md"
                   aria-hidden="true"
@@ -126,7 +133,7 @@ const Navbar = ({ darkMode, setDarkMode }) => {
                 <span className="text-sm font-medium text-surface-700 dark:text-surface-200 max-w-[120px] truncate">
                   {displayName}
                 </span>
-              </div>
+              </button>
 
               {/* Logout */}
               <button
@@ -227,23 +234,26 @@ const Navbar = ({ darkMode, setDarkMode }) => {
         </nav>
 
         {/* ---- User section (bottom) ---- */}
-        <div className="shrink-0 border-t border-surface-200/50 dark:border-surface-700/50 px-5 py-4 space-y-4">
-          {/* User info */}
-          <div className="flex items-center gap-3">
+        <div className="shrink-0 border-t border-surface-200/50 dark:border-surface-700/50 px-5 py-4 space-y-3">
+          {/* User info button */}
+          <button
+            type="button"
+            onClick={() => {
+              closeMobile();
+              setProfileOpen(true);
+            }}
+            className="flex items-center gap-3 w-full p-2 -mx-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors text-left cursor-pointer"
+          >
             <div className="flex items-center justify-center h-10 w-10 rounded-full bg-gradient-to-br from-primary-500 via-secondary-500 to-accent-500 text-white text-sm font-bold select-none shadow-md shrink-0">
               {initials}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-surface-800 dark:text-surface-100 truncate">
                 {displayName}
               </p>
-              {user?.email && (
-                <p className="text-xs text-surface-500 dark:text-surface-400 truncate">
-                  {user.email}
-                </p>
-              )}
+              <p className="text-[11px] text-primary-500 font-medium">View Profile & Security →</p>
             </div>
-          </div>
+          </button>
 
           {/* Logout button */}
           <button
@@ -252,13 +262,16 @@ const Navbar = ({ darkMode, setDarkMode }) => {
               closeMobile();
               handleLogout();
             }}
-            className="flex items-center justify-center gap-2 w-full min-h-[48px] rounded-btn text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400/50"
+            className="flex items-center justify-center gap-2 w-full min-h-[44px] rounded-btn text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400/50"
           >
             <LogOut className="h-5 w-5" />
             <span>Log out</span>
           </button>
         </div>
       </aside>
+
+      {/* Profile Modal */}
+      <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
     </>
   );
 };

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { signUp, logIn, logOut, onAuthChange } from '../firebase/auth';
+import { signUp, logIn, logOut, onAuthChange, resetPassword, updateUserPassword, updateUserProfile } from '../firebase/auth';
 
 const AuthContext = createContext(null);
 
@@ -37,12 +37,29 @@ export const AuthProvider = ({ children }) => {
     await logOut();
   };
 
+  const handleResetPassword = async (email, newPassword) => {
+    await resetPassword(email, newPassword);
+  };
+
+  const handleUpdatePassword = async (currentPassword, newPassword) => {
+    if (!user?.email) throw new Error('No logged in user');
+    await updateUserPassword(user.email, currentPassword, newPassword);
+  };
+
+  const handleUpdateProfile = async (updates) => {
+    if (!user?.uid) throw new Error('No logged in user');
+    await updateUserProfile(user.uid, updates);
+  };
+
   const value = {
     user,
     loading,
     signUp: handleSignUp,
     logIn: handleLogIn,
     logOut: handleLogOut,
+    resetPassword: handleResetPassword,
+    updatePassword: handleUpdatePassword,
+    updateProfile: handleUpdateProfile,
     isAuthenticated: !!user,
   };
 

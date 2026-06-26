@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Navbar from './components/Layout/Navbar';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
+import ForgotPassword from './components/Auth/ForgotPassword';
 import Dashboard from './components/Dashboard/Dashboard';
 import CalendarPage from './components/Calendar/Calendar';
 import ProtectedRoute from './components/UI/ProtectedRoute';
@@ -116,8 +117,8 @@ const AppContent = () => {
               errorDetail = 'Twilio credentials are missing in .env. Restart the dev server after saving them.';
             } else if (err.twilioCode === 63015 || err.message?.includes('63015')) {
               // Recipient has not opted into the WhatsApp Sandbox
-              errorTitle = '⚠️ WhatsApp Opt-In Required';
-              errorDetail = `${event.personName || 'The recipient'} must first join your WhatsApp Sandbox. Ask them to send "join <your-keyword>" to +14155238886 on WhatsApp.`;
+              errorTitle = '💬 Twilio Sandbox Restriction';
+              errorDetail = `Twilio Sandbox (+14155238886) requires daily 'join' keywords. To permanently send automated WhatsApp reminders without keywords, link your Twilio number in Twilio Console. For now, click below to deliver instantly!`;
             } else if (err.twilioCode === 63016 || err.message?.includes('unverified')) {
               errorDetail = 'Twilio Trial: recipient must be a Verified Caller ID in your Twilio console.';
             } else {
@@ -125,22 +126,22 @@ const AppContent = () => {
             }
 
             toast.warning(
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold text-sm">{errorTitle}</span>
-                <span className="text-xs text-surface-600 dark:text-surface-300 font-medium">
+              <div className="flex flex-col gap-1.5 py-0.5">
+                <span className="font-bold text-sm text-amber-600 dark:text-amber-400">{errorTitle}</span>
+                <span className="text-xs text-surface-700 dark:text-surface-200 leading-relaxed font-medium">
                   {errorDetail}
                 </span>
                 <a
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-flex items-center justify-center bg-[#25D366] hover:bg-[#20ba56] text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow"
+                  className="mt-2 inline-flex items-center justify-center gap-1.5 bg-[#25D366] hover:bg-[#20ba56] text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
                   style={{ textDecoration: 'none', color: 'white', display: 'inline-flex' }}
                 >
-                  Send Manually via WhatsApp
+                  <span>🚀 1-Click Send via WhatsApp</span>
                 </a>
               </div>,
-              { autoClose: 20000, closeOnClick: false }
+              { autoClose: false, closeOnClick: false }
             );
           });
       });
@@ -231,6 +232,10 @@ const AppContent = () => {
           <Route
             path="/signup"
             element={user ? <Navigate to="/" replace /> : <Signup />}
+          />
+          <Route
+            path="/forgot-password"
+            element={user ? <Navigate to="/" replace /> : <ForgotPassword />}
           />
           <Route
             path="/"
