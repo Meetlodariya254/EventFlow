@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { signUp, logIn, logOut, onAuthChange, resetPassword, updateUserPassword, updateUserProfile } from '../firebase/auth';
+import { signUp, logIn, logOut, onAuthChange, sendPasswordResetLink, completePasswordReset, updateUserPassword, updateUserProfile } from '../firebase/auth';
 
 const AuthContext = createContext(null);
 
@@ -37,8 +37,13 @@ export const AuthProvider = ({ children }) => {
     await logOut();
   };
 
-  const handleResetPassword = async (email, newPassword) => {
-    await resetPassword(email, newPassword);
+  const handleSendResetLink = async (email) => {
+    const token = await sendPasswordResetLink(email);
+    return token;
+  };
+
+  const handleCompleteReset = async (email, token, newPassword) => {
+    await completePasswordReset(email, token, newPassword);
   };
 
   const handleUpdatePassword = async (currentPassword, newPassword) => {
@@ -57,7 +62,8 @@ export const AuthProvider = ({ children }) => {
     signUp: handleSignUp,
     logIn: handleLogIn,
     logOut: handleLogOut,
-    resetPassword: handleResetPassword,
+    sendPasswordResetLink: handleSendResetLink,
+    completePasswordReset: handleCompleteReset,
     updatePassword: handleUpdatePassword,
     updateProfile: handleUpdateProfile,
     isAuthenticated: !!user,

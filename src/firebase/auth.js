@@ -47,15 +47,87 @@ export const logOut = async () => {
   notifyListeners(null);
 };
 
-export const resetPassword = async (email, newPassword) => {
+const RESET_TOKENS_KEY = 'mock_reset_tokens';
+const getResetTokens = () => JSON.parse(localStorage.getItem(RESET_TOKENS_KEY) || '{}');
+const setResetTokens = (tokens) => localStorage.setItem(RESET_TOKENS_KEY, JSON.stringify(tokens));
+
+export const sendPasswordResetLink = async (email) => {
   await new Promise((resolve) => setTimeout(resolve, 500));
+  const users = getUsers();
+  const user = users.find((u) => u.email === email);
+  if (!user) {
+    throw new Error('No account found with this registered email address.');
+  }
+
+  // Generate prominent 6-Digit One-Time Reset Code (OTP)
+  const shortCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+  const payload = {
+    email,
+    shortCode,
+    exp: Date.now() + 15 * 60 * 1000,
+    nonce: Math.random().toString(36).substring(2),
+  };
+  const token = btoa(encodeURIComponent(JSON.stringify(payload)));
+
+  const tokens = getResetTokens();
+  tokens[email] = { token, shortCode, expiry: payload.exp };
+  setResetTokens(tokens);
+
+  return { token, shortCode };
+};
+
+export const completePasswordReset = async (email, tokenOrCode, newPassword) => {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  let isValid = false;
+  const tokens = getResetTokens();
+  const stored = tokens[email];
+
+  if (stored && (stored.token === tokenOrCode || stored.shortCode === tokenOrCode.trim())) {
+    if (Date.now() > stored.expiry) {
+      delete tokens[email];
+      setResetTokens(tokens);
+      throw new Error('This verification code or link has expired. Please request a new reset email.');
+    }
+    isValid = true;
+  }
+
+  if (!isValid) {
+    try {
+      const rawJson = decodeURIComponent(atob(tokenOrCode));
+      const decodedPayload = JSON.parse(rawJson);
+      if (decodedPayload && decodedPayload.email === email) {
+        if (Date.now() > decodedPayload.exp) {
+          throw new Error('This verification link has expired.');
+        }
+        isValid = true;
+      }
+    } catch (err) {
+      // Not a valid base64 token
+    }
+  }
+
+  if (!isValid) {
+    throw new Error('Invalid verification code or link. Please verify the 6-digit code or request a new email.');
+  }
+
   const users = getUsers();
   const index = users.findIndex((u) => u.email === email);
   if (index === -1) {
-    throw new Error('No account found with this email address.');
+    throw new Error('User account not found.');
   }
+
   users[index].password = newPassword;
   setUsers(users);
+
+  localStorage.removeItem(CURRENT_USER_KEY);
+  notifyListeners(null);
+
+  if (tokens[email]) {
+    delete tokens[email];
+    setResetTokens(tokens);
+  }
 };
 
 export const updateUserPassword = async (email, currentPassword, newPassword) => {

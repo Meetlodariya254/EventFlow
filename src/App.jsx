@@ -8,6 +8,7 @@ import Navbar from './components/Layout/Navbar';
 import Login from './components/Auth/Login';
 import Signup from './components/Auth/Signup';
 import ForgotPassword from './components/Auth/ForgotPassword';
+import ResetPassword from './components/Auth/ResetPassword';
 import Dashboard from './components/Dashboard/Dashboard';
 import CalendarPage from './components/Calendar/Calendar';
 import ProtectedRoute from './components/UI/ProtectedRoute';
@@ -235,7 +236,11 @@ const AppContent = () => {
           />
           <Route
             path="/forgot-password"
-            element={user ? <Navigate to="/" replace /> : <ForgotPassword />}
+            element={<ForgotPassword />}
+          />
+          <Route
+            path="/reset-password"
+            element={<ResetPassword />}
           />
           <Route
             path="/"
