@@ -38,8 +38,10 @@ const reminderStatusConfig = {
   [REMINDER_STATUS.PENDING]: { label: 'Pending', dot: 'bg-yellow-400', ringColor: 'ring-yellow-400/30' },
   [REMINDER_STATUS.SENT]: { label: 'Sent', dot: 'bg-blue-500', ringColor: 'ring-blue-500/30' },
   [REMINDER_STATUS.DELIVERED]: { label: 'Delivered', dot: 'bg-emerald-500', ringColor: 'ring-emerald-500/30' },
+  [REMINDER_STATUS.READ]: { label: 'Read ✓✓', dot: 'bg-emerald-500', ringColor: 'ring-emerald-500/30' },
   [REMINDER_STATUS.FAILED]: { label: 'Failed', dot: 'bg-red-500', ringColor: 'ring-red-500/30' },
   [REMINDER_STATUS.CALLED]: { label: 'Called', dot: 'bg-emerald-500', ringColor: 'ring-emerald-500/30' },
+  [REMINDER_STATUS.SKIPPED]: { label: 'Skipped (msg read)', dot: 'bg-sky-400', ringColor: 'ring-sky-400/30' },
 };
 
 const EventDetails = ({ isOpen, onClose, event, onEdit, onDelete, reminders }) => {

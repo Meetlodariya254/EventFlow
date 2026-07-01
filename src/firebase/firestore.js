@@ -1,221 +1,147 @@
-// Mock Firestore Implementation using LocalStorage
-const EVENTS_KEY = 'mock_events';
-const REMINDERS_KEY = 'mock_reminders';
-
-const getCollection = (key) => JSON.parse(localStorage.getItem(key) || '[]');
-const setCollection = (key, data) => localStorage.setItem(key, JSON.stringify(data));
-
-// Real-time listeners
-const listeners = {
-  events: new Set(),
-  reminders: new Set()
-};
-
-const notifyListeners = (collectionName) => {
-  listeners[collectionName].forEach(cb => cb());
-};
+// Real Firestore Implementation using Firebase SDK
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
+import { db } from './config';
 
 // =================== EVENTS ===================
 
 export const createEvent = async (eventData) => {
-  let data = typeof eventData === 'object' ? eventData : arguments[1];
-  let uid = typeof eventData === 'object' ? data.userId : arguments[0];
-  if (!data.userId) data.userId = uid;
-
-  const events = getCollection(EVENTS_KEY);
-  const newEvent = {
-    ...data,
-    id: Date.now().toString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  events.push(newEvent);
-  setCollection(EVENTS_KEY, events);
-  notifyListeners('events');
-  return newEvent.id;
+  const eventsRef = collection(db, 'events');
+  const docRef = await addDoc(eventsRef, {
+    ...eventData,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
 };
 
 export const updateEvent = async (eventId, updates) => {
-  const events = getCollection(EVENTS_KEY);
-  const index = events.findIndex(e => e.id === eventId);
-  if (index !== -1) {
-    events[index] = { ...events[index], ...updates, updatedAt: new Date().toISOString() };
-    setCollection(EVENTS_KEY, events);
-    notifyListeners('events');
-  }
+  const eventRef = doc(db, 'events', eventId);
+  await updateDoc(eventRef, {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
 };
 
 export const deleteEvent = async (eventId) => {
-  const events = getCollection(EVENTS_KEY);
-  setCollection(EVENTS_KEY, events.filter(e => e.id !== eventId));
-  notifyListeners('events');
+  await deleteDoc(doc(db, 'events', eventId));
 };
 
 export const subscribeToEvents = (userId, callback) => {
-  const handler = () => {
-    const events = getCollection(EVENTS_KEY)
-      .filter(e => e.userId === userId)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .map(e => ({
-        ...e,
-        date: new Date(e.date),
-        createdAt: new Date(e.createdAt),
-        updatedAt: new Date(e.updatedAt),
-      }));
+  const eventsRef = collection(db, 'events');
+  const q = query(
+    eventsRef,
+    where('userId', '==', userId),
+    orderBy('date', 'asc')
+  );
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const events = snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        ...data,
+        id: docSnap.id,
+        // Convert Firestore Timestamp → JS Date
+        date: data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+      };
+    });
     callback(events);
-  };
-  
-  listeners.events.add(handler);
-  handler(); // initial call
-  
-  return () => {
-    listeners.events.delete(handler);
-  };
+  });
+
+  return unsubscribe;
 };
 
 // =================== REMINDERS ===================
 
 export const subscribeToReminders = (eventId, callback) => {
-  const handler = () => {
-    const reminders = getCollection(REMINDERS_KEY)
-      .filter(r => r.eventId === eventId)
-      .map(r => ({ ...r, createdAt: new Date(r.createdAt) }));
+  const remindersRef = collection(db, 'reminders');
+  const q = query(remindersRef, where('eventId', '==', eventId));
+
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    // Cloud Functions store one doc per event with whatsappStatus + voiceCallStatus.
+    // Map each to the two-typed-object shape that EventDetails.jsx expects.
+    const reminders = [];
+
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      const createdAt = data.createdAt instanceof Timestamp
+        ? data.createdAt.toDate()
+        : new Date(data.createdAt || Date.now());
+
+      // WhatsApp reminder entry
+      reminders.push({
+        ...data,
+        id: docSnap.id + '_wa',
+        type: 'whatsapp',
+        status: data.whatsappStatus || 'pending',
+        sentAt: data.whatsappSentAt instanceof Timestamp
+          ? data.whatsappSentAt.toDate().toISOString()
+          : null,
+        createdAt,
+      });
+
+      // Voice call reminder entry (only show if voice was attempted or skipped)
+      if (data.voiceCallStatus && data.voiceCallStatus !== 'pending') {
+        reminders.push({
+          ...data,
+          id: docSnap.id + '_vc',
+          type: 'voice',
+          status: data.voiceCallStatus === 'called' ? 'called' : data.voiceCallStatus,
+          sentAt: data.voiceCallAttemptAt instanceof Timestamp
+            ? data.voiceCallAttemptAt.toDate().toISOString()
+            : null,
+          createdAt,
+        });
+      }
+    });
+
     callback(reminders);
-  };
-  
-  listeners.reminders.add(handler);
-  handler();
-  
-  return () => listeners.reminders.delete(handler);
+  });
+
+  return unsubscribe;
 };
 
 export const subscribeToUserReminders = (userId, callback) => {
-  const handler = () => {
-    const reminders = getCollection(REMINDERS_KEY)
-      .filter(r => r.userId === userId)
-      .map(r => ({ ...r, createdAt: new Date(r.createdAt) }));
-    callback(reminders);
-  };
-  
-  listeners.reminders.add(handler);
-  handler();
-  
-  return () => listeners.reminders.delete(handler);
-};
+  const remindersRef = collection(db, 'reminders');
+  const q = query(remindersRef, where('userId', '==', userId));
 
-// Mock Timestamp
-export const toFirestoreTimestamp = (date) => {
-  return date.toISOString();
-};
-
-// Background worker to simulate Cloud Functions
-export const startMockReminderWorker = (userId) => {
-  if (!userId) return () => {};
-  
-  const interval = setInterval(() => {
-    const events = getCollection(EVENTS_KEY).filter((e) => e.userId === userId);
-    const reminders = getCollection(REMINDERS_KEY);
-    
-    let remindersUpdated = false;
-    const now = new Date();
-    
-    events.forEach((event) => {
-      if (!event.date) return;
-      const eventDate = new Date(event.date);
-      if (event.startTime) {
-        const [hours, minutes] = event.startTime.split(':').map(Number);
-        eventDate.setHours(hours, minutes, 0, 0);
-      }
-      
-      const diffMins = (eventDate.getTime() - now.getTime()) / (1000 * 60);
-      
-      // Due within 2 mins or overdue up to 60 mins
-      if (diffMins <= 2 && diffMins >= -60) {
-        let reminder = reminders.find((r) => r.eventId === event.id);
-        
-        if (!reminder) {
-          reminder = {
-            id: Date.now().toString() + Math.random().toString(36).substring(7),
-            eventId: event.id,
-            userId: userId,
-            type: 'whatsapp',
-            status: 'pending',
-            createdAt: now.toISOString(),
-          };
-          reminders.push(reminder);
-          remindersUpdated = true;
-
-          // Simulate WhatsApp send after 3 seconds
-          setTimeout(() => {
-            const currentReminders = getCollection(REMINDERS_KEY);
-            const idx = currentReminders.findIndex((r) => r.id === reminder.id);
-            if (idx !== -1) {
-              currentReminders[idx].status = 'sent';
-              currentReminders[idx].sentAt = new Date().toISOString();
-              setCollection(REMINDERS_KEY, currentReminders);
-              notifyListeners('reminders');
-
-              // Custom event to trigger WhatsApp send via Twilio in App.jsx
-              const evt = new CustomEvent('whatsapp_sent', { detail: event });
-              window.dispatchEvent(evt);
-
-              // Simulate delivery check after 8 seconds
-              setTimeout(() => {
-                const r2 = getCollection(REMINDERS_KEY);
-                const idx2 = r2.findIndex((r) => r.id === reminder.id);
-                if (idx2 !== -1) {
-                  r2[idx2].status = 'delivered';
-                  setCollection(REMINDERS_KEY, r2);
-                  notifyListeners('reminders');
-                }
-
-                // Add a voice call reminder entry and trigger voice call after 2 minutes
-                // (simulates the 2-minute fallback for unseen messages)
-                setTimeout(() => {
-                  const r3 = getCollection(REMINDERS_KEY);
-                  const existingVoice = r3.find((r) => r.eventId === event.id && r.type === 'voice');
-                  if (!existingVoice) {
-                    const voiceReminder = {
-                      id: Date.now().toString() + Math.random().toString(36).substring(7),
-                      eventId: event.id,
-                      userId: userId,
-                      type: 'voice',
-                      status: 'pending',
-                      createdAt: new Date().toISOString(),
-                    };
-                    r3.push(voiceReminder);
-                    setCollection(REMINDERS_KEY, r3);
-                    notifyListeners('reminders');
-
-                    // Dispatch event to trigger actual voice call via Twilio
-                    const callEvt = new CustomEvent('voice_call_triggered', { detail: event });
-                    window.dispatchEvent(callEvt);
-
-                    // Mark voice call as "called" after attempt
-                    setTimeout(() => {
-                      const r4 = getCollection(REMINDERS_KEY);
-                      const vIdx = r4.findIndex((r) => r.id === voiceReminder.id);
-                      if (vIdx !== -1) {
-                        r4[vIdx].status = 'called';
-                        r4[vIdx].sentAt = new Date().toISOString();
-                        setCollection(REMINDERS_KEY, r4);
-                        notifyListeners('reminders');
-                      }
-                    }, 5000);
-                  }
-                }, 120000); // 120,000 ms = 2 minutes
-              }, 8000);
-            }
-          }, 3000);
-        }
-      }
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const reminders = snapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        ...data,
+        id: docSnap.id,
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
+      };
     });
-    
-    if (remindersUpdated) {
-      setCollection(REMINDERS_KEY, reminders);
-      notifyListeners('reminders');
-    }
-  }, 5000); // Check every 5 seconds for simulation
-  
-  return () => clearInterval(interval);
+    callback(reminders);
+  });
+
+  return unsubscribe;
+};
+
+// Mock Timestamp (kept for compatibility with any callers)
+export const toFirestoreTimestamp = (date) => {
+  return Timestamp.fromDate(date);
+};
+
+// startMockReminderWorker is intentionally removed.
+// Firebase Cloud Functions (functions/index.js) now handle all reminder
+// scheduling server-side — no browser tab needs to be open.
+export const startMockReminderWorker = () => {
+  // No-op: Cloud Functions handle this now
+  return () => {};
 };
