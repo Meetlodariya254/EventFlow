@@ -16,10 +16,11 @@ import { db } from './config';
 
 // =================== EVENTS ===================
 
-export const createEvent = async (eventData) => {
+export const createEvent = async (userId, eventData) => {
   const eventsRef = collection(db, 'events');
   const docRef = await addDoc(eventsRef, {
     ...eventData,
+    userId,                        // REQUIRED: links event to user for reminders
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -28,8 +29,10 @@ export const createEvent = async (eventData) => {
 
 export const updateEvent = async (eventId, updates) => {
   const eventRef = doc(db, 'events', eventId);
+  // Never allow overwriting userId on update
+  const { userId: _removed, ...safeUpdates } = updates;
   await updateDoc(eventRef, {
-    ...updates,
+    ...safeUpdates,
     updatedAt: serverTimestamp(),
   });
 };

@@ -68,13 +68,24 @@ exports.checkAndSendReminders = onSchedule(
   async () => {
     try {
       const now = new Date();
+      // Look 2 minutes ahead — reminder fires exactly 2 minutes before event start
       const twoMinutesFromNow = new Date(now.getTime() + 2 * 60 * 1000);
+      // 10-minute catch-up window handles any server timing jitter
+      const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
 
       const eventsSnapshot = await db.collection("events").get();
       let reminderCount = 0;
+      let skippedCount = 0;
 
       for (const eventDoc of eventsSnapshot.docs) {
         const eventData = eventDoc.data();
+
+        // Skip events without required fields
+        if (!eventData.userId || !eventData.mobileNumber || !eventData.startTime) {
+          logger.warn(`Event ${eventDoc.id} missing required fields (userId/mobileNumber/startTime) — skipping`);
+          skippedCount++;
+          continue;
+        }
 
         const eventDate = eventData.date?.toDate
           ? eventData.date.toDate()
@@ -83,8 +94,9 @@ exports.checkAndSendReminders = onSchedule(
         const eventDateTime = new Date(eventDate);
         eventDateTime.setHours(hours, minutes, 0, 0);
 
+        // Fire when event is within 2 minutes of starting (or up to 10 min past)
         const isUpcoming = eventDateTime <= twoMinutesFromNow;
-        const notTooOld  = eventDateTime >= new Date(now.getTime() - 5 * 60 * 1000);
+        const notTooOld  = eventDateTime >= tenMinutesAgo;
 
         if (isUpcoming && notTooOld) {
           const existing = await db
@@ -104,19 +116,21 @@ exports.checkAndSendReminders = onSchedule(
               eventTime:        eventData.startTime,
               eventDate:        eventData.date,
               whatsappStatus:   "pending",
-              whatsappMessageId: null,       // Green API message ID
-              whatsappReadStatus: "unknown", // updated by webhook
+              whatsappMessageId: null,
+              whatsappReadStatus: "unknown",
               voiceCallStatus:  "pending",
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
             reminderCount++;
-            logger.info(`Created reminder: ${eventData.title} (${eventDoc.id})`);
+            logger.info(`Created reminder for event: "${eventData.title}" (${eventDoc.id}) at ${eventDateTime.toISOString()}`);
           }
         }
       }
 
-      logger.info(`Checked ${eventsSnapshot.size} events, created ${reminderCount} reminders`);
+      logger.info(
+        `Checked ${eventsSnapshot.size} events → ${reminderCount} reminders created, ${skippedCount} skipped (missing fields)`
+      );
     } catch (error) {
       logger.error("Error in checkAndSendReminders:", error);
       throw error;
@@ -142,13 +156,37 @@ exports.sendWhatsAppReminder = onDocumentCreated(
     const reminderId   = event.params.reminderId;
 
     try {
+      // Format date for the message (e.g. "4 Jul 2026")
+      let dateStr = "today";
+      if (reminderData.eventDate) {
+        const d = reminderData.eventDate?.toDate
+          ? reminderData.eventDate.toDate()
+          : new Date(reminderData.eventDate);
+        dateStr = d.toLocaleDateString("en-IN", {
+          day: "numeric", month: "short", year: "numeric",
+          timeZone: "Asia/Kolkata",
+        });
+      }
+
+      // Format time to 12-hour format
+      let timeStr = reminderData.eventTime || "";
+      if (timeStr) {
+        const [h, m] = timeStr.split(":").map(Number);
+        const period = h >= 12 ? "PM" : "AM";
+        timeStr = `${h % 12 || 12}:${String(m).padStart(2, "0")} ${period}`;
+      }
+
       const descText = reminderData.eventDescription
-        ? `\n\nDescription: ${reminderData.eventDescription}`
+        ? `\n📝 ${reminderData.eventDescription}`
         : "";
+
       const message =
-        `Hi ${reminderData.personName}, reminder: ` +
-        `"${reminderData.eventTitle}" is scheduled for ${reminderData.eventTime} today.` +
-        `${descText}\n\nDon't miss it! 📅`;
+        `🔔 *Reminder from EventFlow*\n\n` +
+        `Hi ${reminderData.personName}! This is a reminder for your upcoming event:\n\n` +
+        `📌 *${reminderData.eventTitle}*\n` +
+        `📅 ${dateStr} at ${timeStr}` +
+        `${descText}\n\n` +
+        `Don't miss it! ⏰`;
 
       const messageId = await sendGreenApiWhatsApp({
         mobileNumber: reminderData.mobileNumber,
@@ -164,7 +202,7 @@ exports.sendWhatsAppReminder = onDocumentCreated(
 
       logger.info(`WhatsApp sent for reminder ${reminderId}, messageId: ${messageId}`);
     } catch (error) {
-      logger.error(`Error sending WhatsApp for reminder ${reminderId}:`, error);
+      logger.error(`Error sending WhatsApp for reminder ${reminderId}:`, error.message);
       await snapshot.ref.update({
         whatsappStatus: "failed",
         whatsappError:  error.message,
