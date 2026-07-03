@@ -97,22 +97,42 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) return;
 
-    const unsubEvents = subscribeToEvents(user.uid, (data) => {
-      setEvents(data);
+    // Safety timeout to prevent eternal skeleton if offline or permission denied
+    const timer = setTimeout(() => {
       setLoading(false);
-    });
+    }, 6000);
 
-    const unsubReminders = subscribeToUserReminders(user.uid, (data) => {
-      // Group reminders by eventId
-      const grouped = {};
-      data.forEach((r) => {
-        if (!grouped[r.eventId]) grouped[r.eventId] = [];
-        grouped[r.eventId].push(r);
-      });
-      setReminders(grouped);
-    });
+    const unsubEvents = subscribeToEvents(
+      user.uid,
+      (data) => {
+        setEvents(data);
+        setLoading(false);
+        clearTimeout(timer);
+      },
+      (err) => {
+        console.error("Dashboard events error:", err);
+        setLoading(false);
+        clearTimeout(timer);
+      }
+    );
+
+    const unsubReminders = subscribeToUserReminders(
+      user.uid,
+      (data) => {
+        const grouped = {};
+        data.forEach((r) => {
+          if (!grouped[r.eventId]) grouped[r.eventId] = [];
+          grouped[r.eventId].push(r);
+        });
+        setReminders(grouped);
+      },
+      (err) => {
+        console.error("Dashboard reminders error:", err);
+      }
+    );
 
     return () => {
+      clearTimeout(timer);
       unsubEvents();
       unsubReminders();
     };

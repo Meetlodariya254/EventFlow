@@ -23,11 +23,24 @@ export default function Calendar() {
   /* ── Subscribe to events ── */
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = subscribeToEvents(user.uid, (data) => {
-      setEvents(data);
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    const timer = setTimeout(() => setLoading(false), 6000);
+    const unsubscribe = subscribeToEvents(
+      user.uid,
+      (data) => {
+        setEvents(data);
+        setLoading(false);
+        clearTimeout(timer);
+      },
+      (err) => {
+        console.error('Calendar events error:', err);
+        setLoading(false);
+        clearTimeout(timer);
+      }
+    );
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, [user]);
 
   /* ── Derived data ── */

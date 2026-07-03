@@ -38,12 +38,12 @@ export const deleteEvent = async (eventId) => {
   await deleteDoc(doc(db, 'events', eventId));
 };
 
-export const subscribeToEvents = (userId, callback) => {
+export const subscribeToEvents = (userId, callback, onError) => {
   const eventsRef = collection(db, 'events');
+  // Simple equality query — requires ZERO custom composite indexes in Firestore
   const q = query(
     eventsRef,
-    where('userId', '==', userId),
-    orderBy('date', 'asc')
+    where('userId', '==', userId)
   );
 
   const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -53,12 +53,17 @@ export const subscribeToEvents = (userId, callback) => {
         ...data,
         id: docSnap.id,
         // Convert Firestore Timestamp → JS Date
-        date: data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date),
-        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt),
-        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt),
+        date: data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date || Date.now()),
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
+        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : new Date(data.updatedAt || Date.now()),
       };
     });
+    // Sort client-side ascending by date
+    events.sort((a, b) => a.date - b.date);
     callback(events);
+  }, (error) => {
+    console.error("Firestore subscribeToEvents error:", error);
+    if (onError) onError(error);
   });
 
   return unsubscribe;
@@ -66,7 +71,7 @@ export const subscribeToEvents = (userId, callback) => {
 
 // =================== REMINDERS ===================
 
-export const subscribeToReminders = (eventId, callback) => {
+export const subscribeToReminders = (eventId, callback, onError) => {
   const remindersRef = collection(db, 'reminders');
   const q = query(remindersRef, where('eventId', '==', eventId));
 
@@ -109,12 +114,15 @@ export const subscribeToReminders = (eventId, callback) => {
     });
 
     callback(reminders);
+  }, (error) => {
+    console.error("Firestore subscribeToReminders error:", error);
+    if (onError) onError(error);
   });
 
   return unsubscribe;
 };
 
-export const subscribeToUserReminders = (userId, callback) => {
+export const subscribeToUserReminders = (userId, callback, onError) => {
   const remindersRef = collection(db, 'reminders');
   const q = query(remindersRef, where('userId', '==', userId));
 
@@ -128,6 +136,9 @@ export const subscribeToUserReminders = (userId, callback) => {
       };
     });
     callback(reminders);
+  }, (error) => {
+    console.error("Firestore subscribeToUserReminders error:", error);
+    if (onError) onError(error);
   });
 
   return unsubscribe;
