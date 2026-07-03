@@ -56,28 +56,36 @@ export default function Calendar() {
     setShowEventDetails(true);
   };
 
-  const handleSaveEvent = async (eventData) => {
+  const handleSaveEvent = async (formData) => {
     try {
-      const dateObj = new Date(eventData.date);
+      const dateObj = new Date(formData.date);
+      const eventDateTimeUTC = formData.startTime
+        ? toFirestoreTimestamp(new Date(`${formData.date}T${formData.startTime}`))
+        : null;
+
       if (selectedEvent) {
+        // UPDATE — userId is already stored, don't pass it in updates
         await updateEvent(selectedEvent.id, {
-          ...eventData,
+          ...formData,
           date: toFirestoreTimestamp(dateObj),
+          ...(eventDateTimeUTC ? { eventDateTimeUTC } : {}),
         });
-        toast.success('Event updated!');
+        toast.success('Event updated successfully!');
       } else {
-        await createEvent({
-          ...eventData,
+        // CREATE — pass userId as first arg (matches updated firestore.js signature)
+        await createEvent(user.uid, {
+          ...formData,
           date: toFirestoreTimestamp(dateObj),
-          userId: user.uid,
+          ...(eventDateTimeUTC ? { eventDateTimeUTC } : {}),
         });
-        toast.success('Event created!');
+        toast.success('Event created successfully!');
       }
       setShowEventForm(false);
       setSelectedEvent(null);
     } catch (err) {
       console.error('Failed to save event:', err);
-      toast.error('Failed to save event.');
+      toast.error('Failed to save event. Please try again.');
+      throw err; // re-throw so EventForm can reset its loading state
     }
   };
 

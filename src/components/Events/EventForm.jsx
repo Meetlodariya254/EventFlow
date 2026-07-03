@@ -3,7 +3,6 @@ import Modal from 'react-modal';
 import { X, Loader2 } from 'lucide-react';
 import { EVENT_CATEGORIES } from '../../utils/constants';
 import { validateMobileNumber, validateEmail, formatDateInput } from '../../utils/helpers';
-import { toast } from 'react-toastify';
 
 Modal.setAppElement('#root');
 
@@ -109,13 +108,11 @@ const EventForm = ({ isOpen, onClose, onSave, initialData, selectedDate }) => {
     setLoading(true);
     try {
       await onSave(formData);
-      toast.success(
-        isEditMode ? 'Event updated successfully!' : 'Event created successfully!'
-      );
+      // Parent component (Dashboard/Calendar) handles the success toast
       onClose();
     } catch (error) {
-      console.error(error);
-      toast.error('Something went wrong. Please try again.');
+      // Parent already showed an error toast — don't duplicate it
+      console.error('EventForm save error:', error);
     } finally {
       setLoading(false);
     }

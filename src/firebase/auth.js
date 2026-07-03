@@ -57,8 +57,21 @@ export const onAuthChange = (callback) => {
 
     // Merge Firestore profile data (mobileNumber, etc.) into the user object
     try {
-      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-      const profileData = userDoc.exists() ? userDoc.data() : {};
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const userDoc = await getDoc(userRef);
+      let profileData = {};
+      if (userDoc.exists()) {
+        profileData = userDoc.data();
+      } else {
+        profileData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || '',
+          mobileNumber: '',
+          createdAt: new Date().toISOString(),
+        };
+        await setDoc(userRef, profileData, { merge: true });
+      }
       callback({
         uid: firebaseUser.uid,
         email: firebaseUser.email,

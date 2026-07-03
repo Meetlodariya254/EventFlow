@@ -207,17 +207,17 @@ export default function ProfileModal({ isOpen, onClose }) {
             <div className={`flex items-start gap-3 p-4 rounded-xl border ${
               waConfigured
                 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
             }`}>
-              <Info size={18} className={`mt-0.5 shrink-0 ${waConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
+              <Info size={18} className={`mt-0.5 shrink-0 ${waConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'}`} />
               <div>
-                <p className={`text-sm font-semibold ${waConfigured ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                  {waConfigured ? '✅ WhatsApp Connected (Green API)' : '⚠️ WhatsApp Setup Required'}
+                <p className={`text-sm font-semibold ${waConfigured ? 'text-emerald-700 dark:text-emerald-300' : 'text-indigo-700 dark:text-indigo-300'}`}>
+                  {waConfigured ? '✅ Custom WhatsApp Connected' : '🚀 Global Server WhatsApp Active (Default)'}
                 </p>
                 <p className="text-xs text-surface-600 dark:text-surface-400 mt-0.5 leading-relaxed">
                   {waConfigured
-                    ? 'Reminders are sent from your personal WhatsApp number. Voice calls only fire if the message is unread after 2 minutes.'
-                    : 'Connect your personal WhatsApp via Green API. Free, no Facebook account needed, messages come from your own number.'}
+                    ? 'Reminders are sent from your personal WhatsApp number. Voice calls only fire if unread after 2 minutes.'
+                    : 'Reminders are automatically sent using the system Green API number. Optionally configure below to send from your personal number.'}
                 </p>
               </div>
             </div>
@@ -248,8 +248,8 @@ export default function ProfileModal({ isOpen, onClose }) {
               {/* Webhook URL box */}
               <div className="mt-3 p-2.5 bg-surface-200 dark:bg-surface-700 rounded-lg">
                 <p className="text-[10px] font-bold text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-1">Your Webhook URL</p>
-                <code className="text-[11px] text-surface-800 dark:text-surface-200 break-all">
-                  https://asia-south1-remainder-agent.cloudfunctions.net/greenApiWebhook
+                <code className="text-[11px] text-surface-800 dark:text-surface-200 break-all select-all">
+                  https://greenapiwebhook-wwyda5agqq-el.a.run.app
                 </code>
               </div>
 

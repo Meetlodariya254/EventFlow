@@ -153,9 +153,16 @@ const Dashboard = () => {
   /* ════════════════ Handlers ════════════════ */
   const handleCreateEvent = async (formData) => {
     try {
+      // Compute the full event UTC timestamp in the user's local timezone.
+      // "2026-07-03T23:10" (no TZ suffix) = browser local time = correct UTC for any timezone.
+      const eventDateTimeUTC = formData.startTime
+        ? toFirestoreTimestamp(new Date(`${formData.date}T${formData.startTime}`))
+        : null;
+
       const eventData = {
         ...formData,
         date: toFirestoreTimestamp(new Date(formData.date)),
+        ...(eventDateTimeUTC ? { eventDateTimeUTC } : {}),
       };
       await createEvent(user.uid, eventData);
       toast.success('Event created successfully!');
@@ -164,15 +171,20 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Create event error:', error);
       toast.error('Failed to create event. Please try again.');
-      throw error; // re-throw so EventForm can handle loading state
+      throw error;
     }
   };
 
   const handleUpdateEvent = async (formData) => {
     try {
+      const eventDateTimeUTC = formData.startTime
+        ? toFirestoreTimestamp(new Date(`${formData.date}T${formData.startTime}`))
+        : null;
+
       const eventData = {
         ...formData,
         date: toFirestoreTimestamp(new Date(formData.date)),
+        ...(eventDateTimeUTC ? { eventDateTimeUTC } : {}),
       };
       await updateEvent(selectedEvent.id, eventData);
       toast.success('Event updated successfully!');

@@ -13,14 +13,23 @@ const db = admin.firestore();
 // Free plan: 100 messages/month. No Meta account needed.
 // ============================================================
 async function sendGreenApiWhatsApp({ mobileNumber, message, userId }) {
-  const userDoc = await db.collection("users").doc(userId).get();
-  if (!userDoc.exists) {
-    throw new Error(`User document not found for uid: ${userId}`);
-  }
+  let instanceId = process.env.GREEN_API_INSTANCE_ID;
+  let apiToken   = process.env.GREEN_API_TOKEN;
 
-  const userData = userDoc.data();
-  const instanceId = userData.greenApiInstanceId || process.env.GREEN_API_INSTANCE_ID;
-  const apiToken   = userData.greenApiToken      || process.env.GREEN_API_TOKEN;
+  if (userId) {
+    try {
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        if (userData.greenApiInstanceId && userData.greenApiToken) {
+          instanceId = userData.greenApiInstanceId;
+          apiToken   = userData.greenApiToken;
+        }
+      }
+    } catch (err) {
+      logger.warn(`Could not fetch user doc for ${userId}, using fallback env vars:`, err.message);
+    }
+  }
 
   if (!instanceId || !apiToken) {
     throw new Error(
@@ -87,12 +96,18 @@ exports.checkAndSendReminders = onSchedule(
           continue;
         }
 
-        const eventDate = eventData.date?.toDate
-          ? eventData.date.toDate()
-          : new Date(eventData.date);
-        const [hours, minutes] = (eventData.startTime || "00:00").split(":").map(Number);
-        const eventDateTime = new Date(eventDate);
-        eventDateTime.setHours(hours, minutes, 0, 0);
+        let eventDateTime;
+        if (eventData.eventDateTimeUTC?.toDate) {
+          eventDateTime = eventData.eventDateTimeUTC.toDate();
+        } else if (eventData.eventDateTimeUTC) {
+          eventDateTime = new Date(eventData.eventDateTimeUTC);
+        } else {
+          // Fallback for older events: compute exact UTC epoch assuming event date & time are in IST (+05:30)
+          const dateObj = eventData.date?.toDate ? eventData.date.toDate() : new Date(eventData.date);
+          const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" });
+          const dateStr = formatter.format(dateObj); // YYYY-MM-DD in IST
+          eventDateTime = new Date(`${dateStr}T${eventData.startTime || "00:00"}:00+05:30`);
+        }
 
         // Fire when event is within 2 minutes of starting (or up to 10 min past)
         const isUpcoming = eventDateTime <= twoMinutesFromNow;
@@ -325,12 +340,19 @@ exports.checkAndSendVoiceCalls = onSchedule(
           if (phone.length === 10) phone = "91" + phone;
           const toPhone = "+" + phone;
 
+          let spokenTime = reminderData.eventTime || "";
+          if (spokenTime) {
+            const [h, m] = spokenTime.split(":").map(Number);
+            const period = h >= 12 ? "PM" : "AM";
+            spokenTime = `${h % 12 || 12}:${String(m).padStart(2, "0")} ${period}`;
+          }
+
           const descText = reminderData.eventDescription
             ? ` Description: ${reminderData.eventDescription}.`
             : "";
           const ttsMessage =
             `Hi ${reminderData.personName}, this is an automated reminder for ` +
-            `${reminderData.eventTitle} scheduled for ${reminderData.eventTime}.` +
+            `${reminderData.eventTitle} scheduled for ${spokenTime}.` +
             `${descText} Please check your schedule. Thank you!`;
 
           const call = await twilio.calls.create({
