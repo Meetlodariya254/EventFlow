@@ -34,3 +34,8 @@ Thumbs.db
 
 # Firebase
 .firebase/
+
+# Secret environment files — NEVER commit these
+functions/.env
+functions/.env.local
+.env.example.local

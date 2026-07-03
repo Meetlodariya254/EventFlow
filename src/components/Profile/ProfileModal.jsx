@@ -11,21 +11,21 @@ import { db } from '../../firebase/config';
 
 export default function ProfileModal({ isOpen, onClose }) {
   const { user, updateProfile, updatePassword } = useAuth();
-  const [activeTab, setActiveTab] = useState('profile'); // 'profile' | 'whatsapp' | 'security'
+  const [activeTab, setActiveTab] = useState('profile');
 
-  // Profile Form
+  // Profile
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // WhatsApp Setup Form
-  const [metaAccessToken, setMetaAccessToken] = useState('');
-  const [metaPhoneNumberId, setMetaPhoneNumberId] = useState('');
+  // WhatsApp — Green API
+  const [greenInstanceId, setGreenInstanceId] = useState('');
+  const [greenToken, setGreenToken] = useState('');
   const [waLoading, setWaLoading] = useState(false);
   const [waConfigured, setWaConfigured] = useState(false);
 
-  // Security Form
+  // Security
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -41,40 +41,33 @@ export default function ProfileModal({ isOpen, onClose }) {
     }
   }, [user, isOpen]);
 
-  // Load existing Meta credentials when WhatsApp tab opens
+  // Load Green API credentials when WhatsApp tab opens
   useEffect(() => {
     if (activeTab !== 'whatsapp' || !user?.uid) return;
-    const loadMetaCreds = async () => {
+    const load = async () => {
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data();
-          if (data.metaAccessToken) {
-            setMetaAccessToken(data.metaAccessToken);
-            setMetaPhoneNumberId(data.metaPhoneNumberId || '');
+          if (data.greenApiInstanceId) {
+            setGreenInstanceId(data.greenApiInstanceId);
+            setGreenToken(data.greenApiToken || '');
             setWaConfigured(true);
           }
         }
       } catch (err) {
-        console.error('Failed to load Meta credentials:', err);
+        console.error('Failed to load Green API credentials:', err);
       }
     };
-    loadMetaCreds();
+    load();
   }, [activeTab, user]);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (!displayName.trim()) {
-      toast.error('Display name cannot be empty');
-      return;
-    }
+    if (!displayName.trim()) { toast.error('Display name cannot be empty'); return; }
     setProfileLoading(true);
     try {
-      await updateProfile({
-        displayName: displayName.trim(),
-        email: email.trim(),
-        mobileNumber: mobileNumber.trim(),
-      });
+      await updateProfile({ displayName: displayName.trim(), email: email.trim(), mobileNumber: mobileNumber.trim() });
       toast.success('Profile updated successfully!');
     } catch (err) {
       toast.error(err.message || 'Failed to update profile');
@@ -85,24 +78,21 @@ export default function ProfileModal({ isOpen, onClose }) {
 
   const handleSaveWhatsApp = async (e) => {
     e.preventDefault();
-    if (!metaAccessToken.trim() || !metaPhoneNumberId.trim()) {
-      toast.error('Both Access Token and Phone Number ID are required');
+    if (!greenInstanceId.trim() || !greenToken.trim()) {
+      toast.error('Both Instance ID and API Token are required');
       return;
     }
     setWaLoading(true);
     try {
       await setDoc(
         doc(db, 'users', user.uid),
-        {
-          metaAccessToken: metaAccessToken.trim(),
-          metaPhoneNumberId: metaPhoneNumberId.trim(),
-        },
+        { greenApiInstanceId: greenInstanceId.trim(), greenApiToken: greenToken.trim() },
         { merge: true }
       );
       setWaConfigured(true);
-      toast.success('WhatsApp credentials saved! Reminders will now be sent via Meta WhatsApp API.');
+      toast.success('WhatsApp connected! Reminders will now be sent from your personal number.');
     } catch (err) {
-      toast.error(err.message || 'Failed to save WhatsApp credentials');
+      toast.error(err.message || 'Failed to save credentials');
     } finally {
       setWaLoading(false);
     }
@@ -110,25 +100,14 @@ export default function ProfileModal({ isOpen, onClose }) {
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    if (!currentPassword) {
-      toast.error('Please enter your current password');
-      return;
-    }
-    if (!newPassword || newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
+    if (!currentPassword) { toast.error('Please enter your current password'); return; }
+    if (!newPassword || newPassword.length < 6) { toast.error('New password must be at least 6 characters'); return; }
+    if (newPassword !== confirmPassword) { toast.error('New passwords do not match'); return; }
     setSecurityLoading(true);
     try {
       await updatePassword(currentPassword, newPassword);
       toast.success('Password changed successfully!');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
     } catch (err) {
       toast.error(err.message || 'Incorrect current password');
     } finally {
@@ -137,57 +116,40 @@ export default function ProfileModal({ isOpen, onClose }) {
   };
 
   const tabs = [
-    { id: 'profile', label: 'Profile', Icon: User },
-    { id: 'whatsapp', label: 'WhatsApp', Icon: MessageCircle },
-    { id: 'security', label: 'Security', Icon: Shield },
+    { id: 'profile',   label: 'Profile',  Icon: User },
+    { id: 'whatsapp',  label: 'WhatsApp', Icon: MessageCircle },
+    { id: 'security',  label: 'Security', Icon: Shield },
   ];
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onRequestClose={onClose}
-      closeTimeoutMS={200}
-      className="ReactModal__Content max-w-lg w-full"
-      overlayClassName="ReactModal__Overlay"
-    >
+    <Modal isOpen={isOpen} onRequestClose={onClose} closeTimeoutMS={200}
+      className="ReactModal__Content max-w-lg w-full" overlayClassName="ReactModal__Overlay">
       <div className="flex flex-col bg-white dark:bg-surface-900 rounded-2xl shadow-2xl overflow-hidden border border-surface-200 dark:border-surface-700">
-        {/* Modal Header */}
+
+        {/* Header */}
         <div className="relative p-6 bg-gradient-to-r from-primary-500/10 via-secondary-500/10 to-transparent border-b border-surface-200 dark:border-surface-700">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary-500 text-white shadow-md">
-              <User size={22} />
-            </div>
+            <div className="p-2.5 rounded-xl bg-primary-500 text-white shadow-md"><User size={22} /></div>
             <div>
-              <h2 className="font-heading text-xl font-bold text-surface-900 dark:text-white">
-                Account Settings
-              </h2>
-              <p className="text-xs text-surface-500 dark:text-surface-400 font-medium">
-                Manage your profile, reminders and security
-              </p>
+              <h2 className="font-heading text-xl font-bold text-surface-900 dark:text-white">Account Settings</h2>
+              <p className="text-xs text-surface-500 dark:text-surface-400 font-medium">Manage your profile, reminders and security</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute top-6 right-6 p-2 rounded-lg text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
-          >
+          <button type="button" onClick={onClose}
+            className="absolute top-6 right-6 p-2 rounded-lg text-surface-400 hover:text-surface-600 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Tabs */}
         <div className="flex border-b border-surface-200 dark:border-surface-700 px-6 bg-surface-50/50 dark:bg-surface-800/30">
           {tabs.map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
+            <button key={id} type="button" onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2 py-3.5 px-4 font-semibold text-sm border-b-2 transition-colors ${
                 activeTab === id
                   ? 'border-primary-500 text-primary-500'
                   : 'border-transparent text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200'
-              }`}
-            >
+              }`}>
               <Icon size={16} />
               {label}
               {id === 'whatsapp' && waConfigured && (
@@ -197,59 +159,38 @@ export default function ProfileModal({ isOpen, onClose }) {
           ))}
         </div>
 
-        {/* Tab 1: Profile Details */}
+        {/* ── Tab 1: Profile ── */}
         {activeTab === 'profile' && (
           <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
             <div>
               <label className="label-text">Display Name</label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                <input
-                  type="text"
-                  required
-                  className="input-field pl-10"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your Name"
-                />
+                <input type="text" required className="input-field pl-10" value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)} placeholder="Your Name" />
               </div>
             </div>
-
             <div>
               <label className="label-text">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                <input
-                  type="email"
-                  required
+                <input type="email" required readOnly
                   className="input-field pl-10 bg-surface-100 dark:bg-surface-800/60 opacity-80 cursor-not-allowed"
-                  value={email}
-                  readOnly
-                  title="Email cannot be changed directly"
-                />
+                  value={email} title="Email cannot be changed directly" />
               </div>
               <p className="text-[11px] text-surface-400 mt-1">Email is linked to your account login ID.</p>
             </div>
-
             <div>
               <label className="label-text">Default Mobile Number (for Reminders)</label>
               <div className="relative">
                 <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                <input
-                  type="tel"
-                  className="input-field pl-10"
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value)}
-                  placeholder="+91 98765 43210"
-                />
+                <input type="tel" className="input-field pl-10" value={mobileNumber}
+                  onChange={(e) => setMobileNumber(e.target.value)} placeholder="+91 98765 43210" />
               </div>
-              <p className="text-[11px] text-surface-400 mt-1">Include country code (e.g. +1 or +91).</p>
+              <p className="text-[11px] text-surface-400 mt-1">Include country code (e.g. +91).</p>
             </div>
-
             <div className="pt-3 flex justify-end gap-3 border-t border-surface-200 dark:border-surface-700">
-              <button type="button" onClick={onClose} className="btn-secondary px-5">
-                Cancel
-              </button>
+              <button type="button" onClick={onClose} className="btn-secondary px-5">Cancel</button>
               <button type="submit" disabled={profileLoading} className="btn-primary px-6 flex items-center gap-2">
                 {profileLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
                 Save Changes
@@ -258,162 +199,141 @@ export default function ProfileModal({ isOpen, onClose }) {
           </form>
         )}
 
-        {/* Tab 2: WhatsApp Setup */}
+        {/* ── Tab 2: WhatsApp Setup (Green API) ── */}
         {activeTab === 'whatsapp' && (
           <div className="p-6 space-y-5">
+
             {/* Status banner */}
             <div className={`flex items-start gap-3 p-4 rounded-xl border ${
               waConfigured
                 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
                 : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
             }`}>
-              <Info size={18} className={waConfigured ? 'text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0' : 'text-amber-600 dark:text-amber-400 mt-0.5 shrink-0'} />
+              <Info size={18} className={`mt-0.5 shrink-0 ${waConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
               <div>
                 <p className={`text-sm font-semibold ${waConfigured ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
-                  {waConfigured ? '✅ WhatsApp Reminders Active' : '⚠️ WhatsApp Setup Required'}
+                  {waConfigured ? '✅ WhatsApp Connected (Green API)' : '⚠️ WhatsApp Setup Required'}
                 </p>
                 <p className="text-xs text-surface-600 dark:text-surface-400 mt-0.5 leading-relaxed">
                   {waConfigured
-                    ? 'Your Meta WhatsApp API is configured. Reminders will be sent automatically even when the app is closed.'
-                    : 'Enter your Meta WhatsApp API credentials below to enable background WhatsApp reminders. One-time setup — no recurring keywords needed!'}
+                    ? 'Reminders are sent from your personal WhatsApp number. Voice calls only fire if the message is unread after 2 minutes.'
+                    : 'Connect your personal WhatsApp via Green API. Free, no Facebook account needed, messages come from your own number.'}
                 </p>
               </div>
             </div>
 
-            {/* How to get credentials */}
-            <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4 space-y-2">
-              <p className="text-xs font-bold text-surface-600 dark:text-surface-400 uppercase tracking-wider">How to get your credentials (free)</p>
-              <ol className="text-xs text-surface-600 dark:text-surface-400 space-y-1.5 list-decimal list-inside leading-relaxed">
-                <li>Go to <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-0.5">developers.facebook.com <ExternalLink size={10}/></a> and create a free app</li>
-                <li>Add the <strong>WhatsApp</strong> product to your app</li>
-                <li>Go to <strong>WhatsApp → API Setup</strong> — copy the <strong>Phone Number ID</strong></li>
-                <li>Copy the temporary <strong>Access Token</strong> (or create a permanent System User token)</li>
-                <li>Add the recipient phone number as a test number in <strong>WhatsApp → API Setup</strong></li>
-              </ol>
-              <a
-                href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-primary-500 hover:text-primary-600 font-medium mt-1"
-              >
-                Full setup guide <ExternalLink size={11} />
+            {/* 4-step guide */}
+            <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-bold text-surface-600 dark:text-surface-400 uppercase tracking-wider">
+                One-time setup — 5 minutes
+              </p>
+              <div className="space-y-3">
+                {[
+                  { n: '1', text: 'Go to', link: 'https://green-api.com', linkText: 'green-api.com', rest: '→ Sign up free (no credit card)' },
+                  { n: '2', text: 'Create a new Instance → Scan the QR code with your WhatsApp (like WhatsApp Web)', link: null },
+                  { n: '3', text: 'Copy your Instance ID and API Token from the instance dashboard', link: null },
+                  { n: '4', text: 'In instance Settings → Webhooks → paste your webhook URL and enable "Outgoing message statuses"', link: null },
+                ].map(({ n, text, link, linkText, rest }) => (
+                  <div key={n} className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-500 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">{n}</span>
+                    <p className="text-xs text-surface-600 dark:text-surface-400 leading-relaxed">
+                      {text}{' '}
+                      {link && <a href={link} target="_blank" rel="noopener noreferrer" className="text-primary-500 hover:underline inline-flex items-center gap-0.5">{linkText} <ExternalLink size={9}/></a>}
+                      {rest && ` ${rest}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Webhook URL box */}
+              <div className="mt-3 p-2.5 bg-surface-200 dark:bg-surface-700 rounded-lg">
+                <p className="text-[10px] font-bold text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-1">Your Webhook URL</p>
+                <code className="text-[11px] text-surface-800 dark:text-surface-200 break-all">
+                  https://asia-south1-remainder-agent.cloudfunctions.net/greenApiWebhook
+                </code>
+              </div>
+
+              <a href="https://green-api.com" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-primary-500 hover:text-primary-600 font-medium">
+                Open Green API <ExternalLink size={11} />
               </a>
             </div>
 
+            {/* Credentials form */}
             <form onSubmit={handleSaveWhatsApp} className="space-y-4">
               <div>
-                <label className="label-text">Phone Number ID</label>
+                <label className="label-text">Instance ID</label>
                 <div className="relative">
                   <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                  <input
-                    type="text"
-                    required
-                    className="input-field pl-10 font-mono text-sm"
-                    value={metaPhoneNumberId}
-                    onChange={(e) => setMetaPhoneNumberId(e.target.value)}
-                    placeholder="123456789012345"
-                  />
+                  <input type="text" required className="input-field pl-10 font-mono text-sm"
+                    value={greenInstanceId} onChange={(e) => setGreenInstanceId(e.target.value)}
+                    placeholder="e.g. 1101234567" />
                 </div>
-                <p className="text-[11px] text-surface-400 mt-1">Found in Meta → WhatsApp → API Setup</p>
+                <p className="text-[11px] text-surface-400 mt-1">Found in your Green API instance dashboard.</p>
               </div>
 
               <div>
-                <label className="label-text">Permanent Access Token</label>
+                <label className="label-text">API Token</label>
                 <div className="relative">
                   <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                  <input
-                    type="password"
-                    required
-                    className="input-field pl-10 font-mono text-sm"
-                    value={metaAccessToken}
-                    onChange={(e) => setMetaAccessToken(e.target.value)}
-                    placeholder="EAAxxxxxxxxxxxxxxxx..."
-                  />
+                  <input type="password" required className="input-field pl-10 font-mono text-sm"
+                    value={greenToken} onChange={(e) => setGreenToken(e.target.value)}
+                    placeholder="Your Green API token" />
                 </div>
-                <p className="text-[11px] text-surface-400 mt-1">
-                  Use a <strong>System User token</strong> for a permanent token that never expires.
-                </p>
+                <p className="text-[11px] text-surface-400 mt-1">Found next to the Instance ID on the dashboard.</p>
               </div>
 
               <div className="pt-2 flex justify-end gap-3 border-t border-surface-200 dark:border-surface-700">
-                <button type="button" onClick={onClose} className="btn-secondary px-5">
-                  Cancel
-                </button>
+                <button type="button" onClick={onClose} className="btn-secondary px-5">Cancel</button>
                 <button type="submit" disabled={waLoading} className="btn-primary px-6 flex items-center gap-2">
                   {waLoading ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
-                  Save & Activate
+                  Connect WhatsApp
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        {/* Tab 3: Security & Password */}
+        {/* ── Tab 3: Security ── */}
         {activeTab === 'security' && (
           <form onSubmit={handleUpdatePassword} className="p-6 space-y-4">
             <div>
               <label className="label-text">Current Password</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                <input
-                  type={showCurrent ? 'text' : 'password'}
-                  required
-                  className="input-field pl-10 pr-10"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrent(!showCurrent)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
-                >
+                <input type={showCurrent ? 'text' : 'password'} required
+                  className="input-field pl-10 pr-10" value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Enter current password" />
+                <button type="button" onClick={() => setShowCurrent(!showCurrent)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600">
                   {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
-
             <div>
               <label className="label-text">New Password</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                <input
-                  type={showNew ? 'text' : 'password'}
-                  required
-                  className="input-field pl-10 pr-10"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min. 6 characters"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNew(!showNew)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600"
-                >
+                <input type={showNew ? 'text' : 'password'} required
+                  className="input-field pl-10 pr-10" value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 6 characters" />
+                <button type="button" onClick={() => setShowNew(!showNew)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600">
                   {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
-
             <div>
               <label className="label-text">Confirm New Password</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-                <input
-                  type={showNew ? 'text' : 'password'}
-                  required
-                  className="input-field pl-10 pr-10"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
-                />
+                <input type={showNew ? 'text' : 'password'} required
+                  className="input-field pl-10 pr-10" value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter new password" />
               </div>
             </div>
-
             <div className="pt-3 flex justify-end gap-3 border-t border-surface-200 dark:border-surface-700">
-              <button type="button" onClick={onClose} className="btn-secondary px-5">
-                Cancel
-              </button>
+              <button type="button" onClick={onClose} className="btn-secondary px-5">Cancel</button>
               <button type="submit" disabled={securityLoading} className="btn-primary px-6 flex items-center gap-2">
                 {securityLoading ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
                 Update Password
@@ -421,6 +341,7 @@ export default function ProfileModal({ isOpen, onClose }) {
             </div>
           </form>
         )}
+
       </div>
     </Modal>
   );
