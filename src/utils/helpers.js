@@ -1,11 +1,29 @@
 import { EVENT_STATUS, EVENT_CATEGORIES } from './constants';
 
 /**
+ * Safely convert Firestore Timestamps, Date objects, or date strings into a valid JS Date
+ */
+export const toDateObject = (date) => {
+  if (!date) return null;
+  if (date instanceof Date) return isNaN(date.getTime()) ? null : date;
+  if (typeof date?.toDate === 'function') {
+    const d = date.toDate();
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof date?.seconds === 'number') {
+    const d = new Date(date.seconds * 1000);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+/**
  * Get the status of an event based on its date and time
  */
 export const getEventStatus = (event) => {
   const now = new Date();
-  const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
+  const eventDate = toDateObject(event.date) || new Date();
   
   // Build full event datetime from date + startTime
   const [hours, minutes] = (event.startTime || '00:00').split(':').map(Number);
@@ -41,8 +59,8 @@ export const getEventStatus = (event) => {
  * Format a date for display
  */
 export const formatDate = (date) => {
-  if (!date) return '';
-  const d = date instanceof Date ? date : new Date(date);
+  const d = toDateObject(date);
+  if (!d) return '';
   return d.toLocaleDateString('en-US', {
     weekday: 'short',
     year: 'numeric',
@@ -55,9 +73,8 @@ export const formatDate = (date) => {
  * Format a date as YYYY-MM-DD for input fields
  */
 export const formatDateInput = (date) => {
-  if (!date) return '';
-  const d = date instanceof Date ? date : new Date(date);
-  if (isNaN(d.getTime())) return '';
+  const d = toDateObject(date);
+  if (!d) return '';
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -79,9 +96,9 @@ export const formatTime = (time) => {
  * Format a relative time string (e.g., "in 2 hours", "3 days ago")
  */
 export const formatRelativeTime = (date) => {
-  if (!date) return '';
+  const d = toDateObject(date);
+  if (!d) return '';
   const now = new Date();
-  const d = date instanceof Date ? date : new Date(date);
   const diffMs = d - now;
   const diffMins = Math.round(diffMs / 60000);
   const diffHours = Math.round(diffMs / 3600000);

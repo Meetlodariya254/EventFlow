@@ -14,7 +14,6 @@ import CalendarPage from './components/Calendar/Calendar';
 import ProtectedRoute from './components/UI/ProtectedRoute';
 import LoadingSpinner from './components/UI/LoadingSpinner';
 import { TOAST_CONFIG } from './utils/constants';
-import { subscribeToUserReminders, acknowledgeReminder } from './firebase/firestore';
 
 const AppContent = () => {
   const { user, loading } = useAuth();
@@ -31,24 +30,6 @@ const AppContent = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
-
-  // Silently and automatically acknowledge reminders in the background if the user is active on the website!
-  useEffect(() => {
-    if (!user?.uid) return;
-    const unsubscribe = subscribeToUserReminders(user.uid, (reminders) => {
-      const active = reminders.filter(
-        (r) =>
-          r.whatsappStatus === 'sent' &&
-          r.voiceCallStatus === 'pending' &&
-          r.whatsappReadStatus !== 'read' &&
-          !r.seenOnWebsite
-      );
-      active.forEach((r) => {
-        acknowledgeReminder(r.id, r.eventId);
-      });
-    });
-    return () => unsubscribe();
-  }, [user]);
 
   if (loading) {
     return <LoadingSpinner fullPage text="Starting EventFlow..." />;
