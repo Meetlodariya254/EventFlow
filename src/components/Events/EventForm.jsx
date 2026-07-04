@@ -43,17 +43,20 @@ const EventForm = ({ isOpen, onClose, onSave, initialData, selectedDate }) => {
         notes: initialData.notes || '',
       });
       setErrors({});
-    } else if (selectedDate) {
+    } else {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTime = `${hours}:${minutes}`;
+
       setFormData({
         ...initialFormState,
-        date: formatDateInput(selectedDate),
+        date: formatDateInput(selectedDate || now),
+        startTime: currentTime,
       });
       setErrors({});
-    } else {
-      setFormData(initialFormState);
-      setErrors({});
     }
-  }, [initialData, selectedDate]);
+  }, [initialData, selectedDate, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

@@ -16,6 +16,7 @@ import {
   Trash2,
   Tag,
 } from 'lucide-react';
+import { toast } from 'react-toastify';
 import {
   getEventStatus,
   formatDate,
@@ -59,8 +60,12 @@ const EventDetails = ({ isOpen, onClose, event, onEdit, onDelete, reminders }) =
   const eventDateTime = new Date(eventDate);
   eventDateTime.setHours(hours, minutes, 0, 0);
 
-  const whatsappReminder = reminders?.find((r) => r.type === 'whatsapp');
-  const voiceReminder = reminders?.find((r) => r.type === 'voice');
+  const docRem = reminders?.[0];
+  const waStatus = docRem?.whatsappReadStatus === 'read' ? 'read' : docRem?.whatsappStatus || (event.reminderStatus?.includes('whatsapp') ? (event.reminderStatus === 'whatsapp_read' ? 'read' : 'sent') : null);
+  const vcStatus = docRem?.voiceCallStatus || (event.reminderStatus?.includes('call') ? (event.reminderStatus === 'call_triggered' ? 'called' : 'skipped') : null);
+
+  const whatsappReminder = waStatus ? { status: waStatus, sentAt: docRem?.whatsappSentAt || event.whatsappSentAt } : null;
+  const voiceReminder = vcStatus ? { status: vcStatus, sentAt: docRem?.voiceCallAttemptAt || event.voiceCallAttemptAt } : null;
 
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
@@ -241,7 +246,7 @@ const EventDetails = ({ isOpen, onClose, event, onEdit, onDelete, reminders }) =
             <span className="text-sm font-semibold uppercase tracking-wider">Reminder Status</span>
           </div>
 
-          {reminders && reminders.length > 0 ? (
+          {(whatsappReminder || voiceReminder || (reminders && reminders.length > 0)) ? (
             <div className="relative ml-2 pl-6">
               {/* Vertical timeline line */}
               <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-surface-200 dark:bg-surface-700" />
@@ -323,6 +328,7 @@ const EventDetails = ({ isOpen, onClose, event, onEdit, onDelete, reminders }) =
                   </div>
                 </div>
               </div>
+
             </div>
           ) : (
             <p className="text-sm text-surface-400 dark:text-surface-500 italic pl-6">

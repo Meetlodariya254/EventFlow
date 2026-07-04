@@ -14,6 +14,7 @@ import CalendarPage from './components/Calendar/Calendar';
 import ProtectedRoute from './components/UI/ProtectedRoute';
 import LoadingSpinner from './components/UI/LoadingSpinner';
 import { TOAST_CONFIG } from './utils/constants';
+import { subscribeToUserReminders, acknowledgeReminder } from './firebase/firestore';
 
 const AppContent = () => {
   const { user, loading } = useAuth();
@@ -31,9 +32,23 @@ const AppContent = () => {
     }
   }, [darkMode]);
 
-  // NOTE: WhatsApp messages and voice calls are now handled entirely by
-  // Firebase Cloud Functions running server-side every minute.
-  // The website no longer needs to stay open for reminders to work.
+  // Silently and automatically acknowledge reminders in the background if the user is active on the website!
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsubscribe = subscribeToUserReminders(user.uid, (reminders) => {
+      const active = reminders.filter(
+        (r) =>
+          r.whatsappStatus === 'sent' &&
+          r.voiceCallStatus === 'pending' &&
+          r.whatsappReadStatus !== 'read' &&
+          !r.seenOnWebsite
+      );
+      active.forEach((r) => {
+        acknowledgeReminder(r.id, r.eventId);
+      });
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   if (loading) {
     return <LoadingSpinner fullPage text="Starting EventFlow..." />;
@@ -41,7 +56,9 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950 transition-colors duration-300">
-      {user && <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />}
+      {user && (
+        <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
+      )}
       
       <main className={user ? 'pt-16' : ''}>
         <Routes>

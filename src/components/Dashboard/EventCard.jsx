@@ -10,6 +10,7 @@ import {
   MessageCircle,
   Tag,
 } from 'lucide-react';
+import { toast } from 'react-toastify';
 import {
   getEventStatus,
   formatDate,
@@ -37,8 +38,10 @@ const reminderStatusConfig = {
   [REMINDER_STATUS.PENDING]: { label: 'Pending', dot: 'bg-yellow-400' },
   [REMINDER_STATUS.SENT]: { label: 'Sent', dot: 'bg-green-500' },
   [REMINDER_STATUS.DELIVERED]: { label: 'Delivered', dot: 'bg-green-500' },
+  [REMINDER_STATUS.READ]: { label: 'Seen ✅', dot: 'bg-emerald-500' },
   [REMINDER_STATUS.FAILED]: { label: 'Failed', dot: 'bg-red-500' },
-  [REMINDER_STATUS.CALLED]: { label: 'Called', dot: 'bg-green-500' },
+  [REMINDER_STATUS.CALLED]: { label: 'Called 📞', dot: 'bg-indigo-500' },
+  [REMINDER_STATUS.SKIPPED]: { label: 'Skipped (Seen)', dot: 'bg-gray-400' },
 };
 
 const EventCard = ({ event, onEdit, onDelete, onViewDetails, reminders }) => {
@@ -49,8 +52,12 @@ const EventCard = ({ event, onEdit, onDelete, onViewDetails, reminders }) => {
   const categoryConfig = getCategoryConfig(event.category);
   const borderClass = categoryBorderMap[event.category] || categoryBorderMap.other;
 
-  const whatsappReminder = reminders?.find((r) => r.type === 'whatsapp');
-  const voiceReminder = reminders?.find((r) => r.type === 'voice');
+  const docRem = reminders?.[0];
+  const waStatus = docRem?.whatsappReadStatus === 'read' ? 'read' : docRem?.whatsappStatus || (event.reminderStatus?.includes('whatsapp') ? (event.reminderStatus === 'whatsapp_read' ? 'read' : 'sent') : null);
+  const vcStatus = docRem?.voiceCallStatus || (event.reminderStatus?.includes('call') ? (event.reminderStatus === 'call_triggered' ? 'called' : 'skipped') : null);
+
+  const whatsappReminder = waStatus ? { status: waStatus, sentAt: docRem?.whatsappSentAt || event.whatsappSentAt } : null;
+  const voiceReminder = vcStatus ? { status: vcStatus, sentAt: docRem?.voiceCallAttemptAt || event.voiceCallAttemptAt } : null;
 
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
@@ -150,22 +157,24 @@ const EventCard = ({ event, onEdit, onDelete, onViewDetails, reminders }) => {
       </div>
 
       {/* 5 ─ Reminder status */}
-      {reminders && reminders.length > 0 && (
-        <div className="flex flex-col gap-1.5 mb-3 text-sm text-surface-600 dark:text-surface-300">
+      {(whatsappReminder || voiceReminder) && (
+        <div className="flex flex-col gap-1.5 mb-3 text-sm text-surface-600 dark:text-surface-300 bg-surface-50 dark:bg-surface-800/50 p-2.5 rounded-xl border border-surface-200/60 dark:border-surface-700/60">
           {whatsappReminder && (
             <div className="inline-flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-green-500" />
+              <MessageCircle className="w-4 h-4 text-green-500 shrink-0" />
               <span
-                className={`w-2 h-2 rounded-full ${
+                className={`w-2 h-2 rounded-full shrink-0 ${
                   reminderStatusConfig[whatsappReminder.status]?.dot || 'bg-gray-400'
                 }`}
               />
-              <span>
+              <span className="font-medium">
                 WhatsApp:{' '}
-                {reminderStatusConfig[whatsappReminder.status]?.label || whatsappReminder.status}
+                <span className="text-surface-800 dark:text-surface-200">
+                  {reminderStatusConfig[whatsappReminder.status]?.label || whatsappReminder.status}
+                </span>
               </span>
               {whatsappReminder.sentAt && (
-                <span className="text-xs text-surface-400 ml-1">
+                <span className="text-xs text-surface-400 ml-auto">
                   {formatRelativeTime(whatsappReminder.sentAt)}
                 </span>
               )}
@@ -174,18 +183,20 @@ const EventCard = ({ event, onEdit, onDelete, onViewDetails, reminders }) => {
 
           {voiceReminder && (
             <div className="inline-flex items-center gap-2">
-              <Phone className="w-4 h-4 text-indigo-500" />
+              <Phone className="w-4 h-4 text-indigo-500 shrink-0" />
               <span
-                className={`w-2 h-2 rounded-full ${
+                className={`w-2 h-2 rounded-full shrink-0 ${
                   reminderStatusConfig[voiceReminder.status]?.dot || 'bg-gray-400'
                 }`}
               />
-              <span>
-                Voice:{' '}
-                {reminderStatusConfig[voiceReminder.status]?.label || voiceReminder.status}
+              <span className="font-medium">
+                Voice Call:{' '}
+                <span className="text-surface-800 dark:text-surface-200">
+                  {reminderStatusConfig[voiceReminder.status]?.label || voiceReminder.status}
+                </span>
               </span>
               {voiceReminder.sentAt && (
-                <span className="text-xs text-surface-400 ml-1">
+                <span className="text-xs text-surface-400 ml-auto">
                   {formatRelativeTime(voiceReminder.sentAt)}
                 </span>
               )}

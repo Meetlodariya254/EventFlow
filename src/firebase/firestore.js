@@ -159,3 +159,20 @@ export const startMockReminderWorker = () => {
   // No-op: Cloud Functions handle this now
   return () => {};
 };
+
+// Acknowledge reminder on the website (stops pending voice call immediately)
+export const acknowledgeReminder = async (reminderId, eventId) => {
+  if (reminderId) {
+    await updateDoc(doc(db, "reminders", reminderId), {
+      whatsappReadStatus: "read",
+      voiceCallStatus: "skipped",
+      seenOnWebsite: true,
+      whatsappStatusUpdatedAt: new Date().toISOString(),
+    }).catch(() => {});
+  }
+  if (eventId) {
+    await updateDoc(doc(db, "events", eventId), {
+      reminderStatus: "whatsapp_read",
+    }).catch(() => {});
+  }
+};

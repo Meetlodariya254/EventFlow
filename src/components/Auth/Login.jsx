@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -13,6 +13,11 @@ export default function Login() {
 
   const { logIn } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setEmail('');
+    setPassword('');
+  }, []);
 
   function validate() {
     const newErrors = {};
@@ -63,7 +68,7 @@ export default function Login() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-5" noValidate autoComplete="off">
           {/* Email */}
           <div>
             <label htmlFor="login-email" className="label-text">
@@ -73,8 +78,10 @@ export default function Login() {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 id="login-email"
+                name="user_email_nocache"
                 type="email"
                 required
+                autoComplete="off"
                 className="input-field pl-11"
                 placeholder="you@example.com"
                 value={email}
@@ -103,8 +110,10 @@ export default function Login() {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
               <input
                 id="login-password"
+                name="user_password_nocache"
                 type={showPassword ? 'text' : 'password'}
                 required
+                autoComplete="new-password"
                 className="input-field pl-11 pr-11"
                 placeholder="••••••••"
                 value={password}
