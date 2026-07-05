@@ -202,7 +202,7 @@ export default defineConfig(({ mode }) => {
             req.on('data', (chunk) => { body += chunk; });
             req.on('end', async () => {
               try {
-                const { to, resetUrl, shortCode } = JSON.parse(body);
+                const { to, shortCode } = JSON.parse(body);
                 console.log(`\n[Email Service] 📧 Password reset requested for ${to}...`);
 
                 const smtpUser = env.SMTP_USER || env.VITE_SMTP_USER || env.EMAIL_USER;

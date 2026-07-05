@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { subscribeToUserReminders } from '../../firebase/firestore';
 import { acknowledgeReminder } from '../../firebase/firestore';
-import { Bell, CheckCircle2, PhoneOff } from 'lucide-react';
+import { Bell, CheckCircle2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 export default function ActiveReminderBanner() {

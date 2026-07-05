@@ -16,7 +16,6 @@ import {
   Trash2,
   Tag,
 } from 'lucide-react';
-import { toast } from 'react-toastify';
 import {
   getEventStatus,
   formatDate,

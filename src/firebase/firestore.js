@@ -8,7 +8,6 @@ import {
   onSnapshot,
   query,
   where,
-  orderBy,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
@@ -30,7 +29,8 @@ export const createEvent = async (userId, eventData) => {
 export const updateEvent = async (eventId, updates) => {
   const eventRef = doc(db, 'events', eventId);
   // Never allow overwriting userId on update
-  const { userId: _removed, ...safeUpdates } = updates;
+  const safeUpdates = { ...updates };
+  delete safeUpdates.userId;
   await updateDoc(eventRef, {
     ...safeUpdates,
     updatedAt: serverTimestamp(),

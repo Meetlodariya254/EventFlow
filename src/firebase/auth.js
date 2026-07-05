@@ -12,7 +12,7 @@ import {
   confirmPasswordReset,
   verifyPasswordResetCode,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './config';
 
 // ── Sign Up ──────────────────────────────────────────────────────────────────

@@ -10,7 +10,6 @@ import {
   MessageCircle,
   Tag,
 } from 'lucide-react';
-import { toast } from 'react-toastify';
 import {
   getEventStatus,
   formatDate,
