@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { CalendarCheck, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
