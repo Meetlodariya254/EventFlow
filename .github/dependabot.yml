@@ -12,5 +12,3 @@ updates:
     directory: "/functions"
     schedule:
       interval: "weekly"
-    ignore:
-      - dependency-name: "brace-expansion"
