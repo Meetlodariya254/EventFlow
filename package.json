@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "firebase": "^12.18.0",
+    "firebase": "^13.1.0",
     "lucide-react": "^1.60.0",
     "nodemailer": "^10.0.13",
     "react": "^19.2.6",
